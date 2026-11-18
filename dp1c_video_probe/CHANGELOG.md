@@ -5,7 +5,7 @@
 - Check streaming imports, FFmpeg and FFprobe at add-on startup; give unauthenticated clients a Basic-authentication hint without exposing configured credentials.
 - Document the snapshot battery tradeoff, advanced options and physical-camera/HomeKit test steps. Preserve existing options, credentials and add-on slug.
 - Add an MIT license for original project code. Dependencies retain their respective licenses.
-- Snapshot behavior has local synthetic coverage; physical-camera/HomeKit validation is pending. No stable GitHub Release is claimed.
+- Snapshot behavior has local synthetic coverage. Still-image delivery through Home Assistant was verified on the owner's DP1C. Apple Home checks are pending.
 
 # 0.2.3
 

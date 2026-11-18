@@ -1,6 +1,6 @@
 # Project state
 
-Last updated: 2026-11-14. Read this first when resuming in a new chat. Update it
+Last updated: 2026-11-18. Read this first when resuming in a new chat. Update it
 after meaningful changes or new camera-test results; keep detailed history in the
 changelog and investigation record.
 
@@ -26,8 +26,16 @@ An earlier MQTT bridge uses Paho MQTT. Original project code is MIT licensed.
   and credentials. Images are not saved to disk by the snapshot endpoint.
 - Startup dependency checks, an HTTP 401 hint, clearer public documentation and
   the MIT license are implemented. Advanced options and the add-on slug are retained.
-- **Physical-camera/HomeKit validation of 0.2.4 is still pending.** Installation
-  and snapshot success have not been reported by the owner in this conversation.
+- The owner reports **0.2.4 is working again**. The earlier log showed successful
+  video output, then intermittent EZVIZ stream-start rejections (`5405`, `5404`)
+  before media arrived. Those codes' specific meanings remain unverified.
+- **Home Assistant still-image delivery is verified on the owner's DP1C**.
+  Generic Camera used `/snapshot.jpg`, and the HA camera proxy returned HTTP 200
+  with a JPEG while the camera entity was idle. No `5404` or `5405` appeared in
+  the reported 2.5-hour HA log window. Apple Home thumbnails and doorbell
+  notification images are still pending.
+- The log also showed a client disconnect while the add-on sent a snapshot error
+  response. A local, unreleased fix suppresses that traceback.
 - Keep the existing RenierM26 HACS integration for working motion/alarm images.
   The separate MQTT Cloud Bridge remains an unvalidated prototype.
 - Audio/intercom is not implemented. Sleep/wake behavior, sustained viewing,
@@ -58,6 +66,9 @@ real JPEG decoding/cache/sharing/timeout checks, FFprobe output checks, live HTT
 streaming and encrypted-media regression checks. These used synthetic media and
 do not establish physical DP1C or HomeKit compatibility.
 
+With the local client-disconnect fix, **65 tests passed**, along with the JPEG
+smoke check. The added regression reproduces the traceback on 0.2.4.
+
 Use the existing checkout and `.venv`; useful commands from the repository root:
 
 ```sh
@@ -70,13 +81,11 @@ checks. Keep credentials, token files, signed URLs and footage out of Git and ch
 
 ## Immediate next task
 
-Validate **0.2.4 on the owner's DP1C and existing HomeKit doorbell setup** before
-starting intercom work:
+Verify **Apple Home still images with 0.2.4** before starting intercom work:
 
-1. Confirm the installed version and live picture. Set Generic Camera's still URL
-   to `http://HOME_ASSISTANT_LAN_IP:8558/snapshot.jpg`, keeping Basic authentication.
-2. Check the HA still preview, Apple Home thumbnail and doorbell notification image.
-   Check freshness after more than 30 seconds; Apple Home can cache its own thumbnail.
-3. Confirm idle producer shutdown and assess latency, sleep/wake and battery use.
-4. Record observed results here, diagnose failures, then decide on a prerelease or
-   stable release. Do not label physical checks passed without owner/runtime evidence.
+1. Open Apple Home with live viewing closed and verify the doorbell thumbnail.
+   Check for a new image after more than 30 seconds and a visible scene change.
+2. Press the physical doorbell and verify that the Apple Home notification
+   includes an image. Record the result and decide whether to stage another release.
+3. Track idle producer shutdown, cold capture latency, sleep/wake and battery use
+   separately. If a cloud rejection recurs, allow the 120-second cooldown to finish.

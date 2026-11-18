@@ -326,3 +326,32 @@ and doorbell notification images, sleep/wake behavior, latency and battery impac
 remain unverified. Frequent thumbnail requests can repeatedly start live video
 after the cache expires. These checks should precede a stable snapshot release;
 audio/intercom remains a separate future feature.
+
+## Intermittent 0.2.4 cloud stream-start rejection
+
+An owner-supplied add-on log showed multiple successful H.264 output checks with
+decryption disabled. Four later starts returned `5405` or `5404` before any video
+bytes arrived. Two successful sessions followed the first rejection. The add-on
+applied its 120-second cooldown at each rejection. The codes identify a rejected
+stream start, and the underlying reason remains unknown. The owner later reported
+that 0.2.4 was working again.
+
+Several snapshot clients disconnected before receiving the HTTP 503, causing a
+`BrokenPipeError` traceback in the response handler. A local fix handles disconnects
+and timeouts during error responses. It leaves the cloud cooldown intact. All 65
+tests passed, including a regression that failed with the original handler. The
+synthetic JPEG smoke check also passed. The fix has not been released.
+
+## Home Assistant still-image verification on 0.2.4
+
+The operator reported a loaded Generic Camera entry configured with
+`/snapshot.jpg`. With the camera entity idle and live viewing closed, a request
+through the Home Assistant camera proxy returned HTTP 200, `image/jpeg`, and a
+10,475-byte response with JPEG start and end markers. Automation requests used
+the same proxy path and were logged below 10 ms without errors. Those timings
+measure proxy fetches and leave cold capture latency unknown.
+
+The reported 2.5-hour Home Assistant system and error log window contained no
+`5404`, `5405`, VTM stream-start failures or stream worker errors for this camera.
+Apple Home thumbnail freshness and doorbell notification images still need a
+client-side check.
