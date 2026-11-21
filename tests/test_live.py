@@ -37,7 +37,9 @@ def test_stream_password_validation(password):
 
 
 def test_hub_starts_on_demand_shares_and_stops():
-    command = [sys.executable, "-u", "-c", "import time; time.sleep(0.1); print('one'); time.sleep(30)"]
+    command = [
+        sys.executable, "-c", "import os,time; time.sleep(0.1); os.write(1, b'one\\n'); time.sleep(30)",
+    ]
     hub = Hub(command, idle_seconds=0.1, max_seconds=5)
     assert hub.process is None
     a = hub.subscribe()

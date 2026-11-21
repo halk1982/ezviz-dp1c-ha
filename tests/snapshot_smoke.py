@@ -1,4 +1,4 @@
-"""Real shared producer -> authenticated JPEG -> decoder; synthetic media only."""
+"""Synthetic H.264/AAC -> shared producer -> authenticated JPEG -> decoder."""
 import base64
 from concurrent.futures import ThreadPoolExecutor
 import http.client
@@ -20,7 +20,8 @@ with tempfile.TemporaryDirectory() as temporary:
     clip = Path(temporary) / "fixture.ts"
     subprocess.run([
         "ffmpeg", "-v", "error", "-f", "lavfi", "-i", "testsrc2=s=320x240:r=10",
-        "-t", "3", "-c:v", "libx264", "-g", "10", "-bf", "0", "-f", "mpegts", str(clip),
+        "-f", "lavfi", "-i", "sine=frequency=440:sample_rate=16000",
+        "-t", "3", "-c:v", "libx264", "-g", "10", "-bf", "0", "-c:a", "aac", "-f", "mpegts", str(clip),
     ], capture_output=True, check=True, timeout=20)
     command = [sys.executable, "-c", "import os,sys,time; time.sleep(0.6); os.execvp(sys.argv[1], sys.argv[1:])",
                "ffmpeg", "-v", "error", "-re", "-stream_loop", "-1", "-i", str(clip),

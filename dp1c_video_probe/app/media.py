@@ -96,34 +96,43 @@ class BoundedDecryptor(_BufferedStreamPayloadDecryptor):
         return self._decrypt_chunk(chunk)
 
 
-def ffmpeg_command(video_mode):
+def ffmpeg_command(video_mode, *, live_audio=False):
     if video_mode not in {"copy", "compatible"}:
         raise ValueError("Unsupported video mode")
+    # Keep the shared input timeline when audio is enabled.
+    timing = ["-vf", "fps=10", "-fps_mode", "passthrough"] if live_audio else [
+        "-vf", "setpts=PTS-STARTPTS", "-r", "10", "-fps_mode", "cfr",
+    ]
     encoding = ["-c:v", "copy"] if video_mode == "copy" else [
         "-c:v", "libx264", "-preset", "veryfast", "-tune", "zerolatency",
-        "-profile:v", "baseline", "-pix_fmt", "yuv420p", "-vf", "setpts=PTS-STARTPTS",
-        "-r", "10", "-fps_mode", "cfr", "-g", "20", "-keyint_min", "20",
+        "-profile:v", "baseline", "-pix_fmt", "yuv420p", *timing, "-g", "20", "-keyint_min", "20",
         "-bf", "0", "-sc_threshold", "0", "-x264-params", "repeat-headers=1",
+    ]
+    audio = ["-map", "0:a:0?", "-c:a", "aac", "-ac", "1"] if live_audio else ["-an"]
+    # Audio may appear later in the program stream than the first video frame.
+    probe = ["-analyzeduration", "2000000", "-probesize", "262144"] if live_audio else [
+        "-analyzeduration", "500000", "-probesize", "65536",
     ]
     return [
         "ffmpeg", "-hide_banner", "-loglevel", "error",
-        "-analyzeduration", "500000", "-probesize", "65536", "-fflags", "+genpts",
-        "-f", "mpeg", "-i", "pipe:0", "-map", "0:v:0", *encoding, "-an",
+        *probe, "-fflags", "+genpts",
+        "-f", "mpeg", "-i", "pipe:0", "-map", "0:v:0", *encoding, *audio,
         "-mpegts_flags", "resend_headers", "-muxdelay", "0", "-muxpreload", "0",
         "-flush_packets", "1", "-f", "mpegts", "pipe:1",
     ]
 
 
-def remux_stream(stream, output, *, key, max_seconds, emit=print, video_mode="copy", decrypt_mode="encrypted-header"):
-    """Exercise the real encrypted-media pipeline; do not log media or URLs."""
+def remux_stream(stream, output, *, key, max_seconds, emit=print, video_mode="copy",
+                 decrypt_mode="encrypted-header", live_audio=False):
+    """Remux live media and report bounded diagnostics."""
     emit(f"LIVE_VIDEO: mode={video_mode}")
-    process = subprocess.Popen(ffmpeg_command(video_mode), stdin=subprocess.PIPE,
+    process = subprocess.Popen(ffmpeg_command(video_mode, live_audio=live_audio), stdin=subprocess.PIPE,
                                stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     decryptor = BoundedDecryptor(key, codec=decrypt_mode) if key else None
     stats = {"packets": 0, "cloud_bytes": 0, "clear_bytes": 0, "ts_bytes": 0}
     errors = []
     flags = set()
-    checks = LocalChecks(key, emit, pipeline_flags=lambda: flags.copy())
+    checks = LocalChecks(key, emit, pipeline_flags=lambda: flags.copy(), live_audio=live_audio)
     stopped = threading.Event()
     started = time.monotonic()
 
@@ -164,6 +173,7 @@ def remux_stream(stream, output, *, key, max_seconds, emit=print, video_mode="co
                     reported_header = True
                 checks.decrypted(packet.body, clear, header_size=header)
                 if clear:
+                    checks.input_audio(clear)
                     if not stats["clear_bytes"]:
                         emit("LIVE_STAGE: decrypted_media_ready")
                     stats["clear_bytes"] += len(clear)
@@ -172,6 +182,7 @@ def remux_stream(stream, output, *, key, max_seconds, emit=print, video_mode="co
             if decryptor and not stopped.is_set():
                 tail = decryptor.flush()
                 checks.decrypted(b"", tail, header_size=decryptor._nalu_header_size)
+                checks.input_audio(tail)
                 stats["clear_bytes"] += len(tail)
                 process.stdin.write(tail)
         except Exception as error:

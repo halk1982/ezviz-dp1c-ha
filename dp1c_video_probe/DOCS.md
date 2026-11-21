@@ -59,7 +59,8 @@ it to the Internet. View remotely through Home Assistant's existing secured acce
   headers. It uses CPU for decoding/re-encoding. It is the user-confirmed picture
   configuration. `video_mode: copy` is an optional lower-CPU mode tested locally;
   it has not yet been confirmed on this physical DP1C with decryption off.
-- Video only; audio and two-way talk are not implemented.
+- Live viewing is video-only by default. Version 0.2.5 adds experimental listening
+  with `live_audio: true`. Talkback still needs a DP1C speaker implementation.
 - One cloud producer is shared by up to four consumers. It starts when a viewer
   connects and closes about ten seconds after the last disconnect is detected.
 - **Keep Preload stream disabled.** HA may retain a stream briefly after closing
@@ -72,6 +73,30 @@ it to the Internet. View remotely through Home Assistant's existing secured acce
 - Media timeout is 45 seconds. Errors cause a cooldown; a nonzero cloud start result
   causes a 120-second cooldown. Authentication challenges block producers until restart.
 - Only amd64 container builds were validated here. aarch64 is declared but not built here.
+
+## Test listening in Scrypted (0.2.5+)
+
+1. Enable `live_audio: true` in the add-on's live-mode configuration, save and
+   restart. Keep the working video and decryption settings.
+2. In Scrypted's **FFmpeg Camera** plugin, enter the following under **FFmpeg
+   Input Stream Arguments**. Replace the placeholders locally with your add-on's
+   stream credentials, HAOS LAN address and mapped port. Leave **No Audio** off.
+
+   ```text
+   -i http://STREAM_USER:STREAM_PASSWORD@HAOS_LAN_IP:8558/live.ts
+   ```
+
+3. Open the stream for at least ten seconds. Check for a normal picture and
+   sound in Scrypted, then repeat in Apple Home through Scrypted's HomeKit
+   plugin. Check that still images and the existing MQTT doorbell press also work.
+4. If sound is missing, check the add-on's `LIVE_AUDIO_CHECK` line. `detected`
+   reports the input codec, sample rate and channels when known. `not_detected`
+   means FFprobe found no audio in the bounded input sample. Share only this log
+   line, without the stream URL or credentials. Set `live_audio: false` and
+   restart to return to video-only output.
+
+The add-on emits mono AAC when FFmpeg recognizes an input audio track. Enabling
+audio increases how much input FFmpeg examines at startup, which can add delay.
 
 ## Still images and HomeKit (0.2.4+)
 

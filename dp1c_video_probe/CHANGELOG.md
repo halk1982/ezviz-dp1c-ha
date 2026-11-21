@@ -1,3 +1,9 @@
+# 0.2.5
+
+- Add opt-in `live_audio` for `/live.ts`. Send mono AAC when FFmpeg finds audio in the cloud feed and keep video-only playback for feeds without audio.
+- Log one metadata-only `LIVE_AUDIO_CHECK` from a bounded in-memory input sample. Add Scrypted and Apple Home listening test steps.
+- Cover both video modes, audio/video timing, video-only inputs, and JPEG snapshots from a stream with audio using synthetic media. Physical DP1C listening and talkback are pending.
+
 # 0.2.4
 
 - Add authenticated `/snapshot.jpg` for Generic Camera's still-image URL and HomeKit thumbnail testing. Reuse the existing cloud producer, cache JPEGs in RAM for 30 seconds and share concurrent captures.

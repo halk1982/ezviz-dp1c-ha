@@ -15,7 +15,8 @@ For development handoffs and the immediate next task, read [PROJECT_STATE.md](PR
 | Live video, clear passthrough + compatible encoding | Normal picture confirmed by the owner on their DP1C since 0.2.3 |
 | JPEG still-image endpoint | Verified through Home Assistant on the owner's DP1C with 0.2.4. Apple Home checks pending. |
 | Motion and last alarm image | Keep your existing RenierM26 HACS integration |
-| Audio / intercom | Not implemented |
+| Live audio | Experimental opt-in in 0.2.5. Synthetic tests pass; physical DP1C and Apple Home checks pending. |
+| Talkback | DP1C speaker session still to be verified |
 | Wake from sleep, long-term playback, battery impact | Need physical-camera testing |
 | Architectures | amd64 tested; aarch64 declared, not validated here |
 

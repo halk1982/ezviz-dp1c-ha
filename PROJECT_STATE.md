@@ -1,6 +1,6 @@
 # Project state
 
-Last updated: 2026-11-18. Read this first when resuming in a new chat. Update it
+Last updated: 2026-11-21. Read this first when resuming in a new chat. Update it
 after meaningful changes or new camera-test results; keep detailed history in the
 changelog and investigation record.
 
@@ -16,8 +16,7 @@ An earlier MQTT bridge uses Paho MQTT. Original project code is MIT licensed.
 
 ## Completed and current status
 
-- **0.2.4 is pushed to GitHub `main`** (application commit `782366f`). It is an
-  experimental add-on version; no stable GitHub Release was created in this work.
+- **0.2.4** introduced JPEG snapshots (application commit `782366f`).
 - The owner confirmed normal live video with `mode: live`, `decrypt_video: false`,
   `video_mode: compatible`. Unnecessary decryption caused the earlier grey picture.
   Alarm-image encryption does not establish that live video needs decryption.
@@ -38,9 +37,15 @@ An earlier MQTT bridge uses Paho MQTT. Original project code is MIT licensed.
   response. A local, unreleased fix suppresses that traceback.
 - Keep the existing RenierM26 HACS integration for working motion/alarm images.
   The separate MQTT Cloud Bridge remains an unvalidated prototype.
-- Audio/intercom is not implemented. Sleep/wake behavior, sustained viewing,
-  battery impact and aarch64 builds remain unverified. Keep Preload stream disabled;
-  thumbnail polling can repeatedly start live video after the cache expires.
+- The owner confirmed hearing and speaking through their DP1C in the official
+  EZVIZ app. Apple Home is the target for intercom. The owner already runs
+  Scrypted on HAOS and uses a custom MQTT sensor for doorbell presses.
+- **0.2.5** adds opt-in live audio. `live_audio: true` enables AAC when the
+  cloud input has a recognized audio track and reports bounded input metadata.
+  Physical-camera audio and the DP1C speaker session still need verification.
+- Sleep/wake behavior, sustained viewing, battery impact and aarch64 builds
+  remain unverified. Keep Preload stream disabled; thumbnail polling can
+  repeatedly start live video after the cache expires.
 
 ## File map
 
@@ -79,9 +84,19 @@ Use the existing checkout and `.venv`; useful commands from the repository root:
 The smoke check requires FFmpeg/FFprobe. See README for installation and container
 checks. Keep credentials, token files, signed URLs and footage out of Git and chat.
 
+With 0.2.5, the local suite passed **71 tests** and all six synthetic media smoke
+checks. The amd64 container passed the audio and diagnostic tests, live HTTP,
+encrypted media and JPEG extraction from H.264/AAC. The DP1C cloud stream's
+audio format remains unverified.
+
 ## Immediate next task
 
-Verify **Apple Home still images with 0.2.4** before starting intercom work:
+Test 0.2.5 on the physical DP1C with `live_audio: true`. Verify the
+`LIVE_AUDIO_CHECK` report and listening in Scrypted and Apple Home, using
+the setup in [DOCS.md](dp1c_video_probe/DOCS.md#test-listening-in-scrypted-025).
+Then verify a DP1C speaker session before wiring Scrypted talkback.
+
+Apple Home still-image validation with 0.2.4 is also pending:
 
 1. Open Apple Home with live viewing closed and verify the doorbell thumbnail.
    Check for a new image after more than 30 seconds and a visible scene change.

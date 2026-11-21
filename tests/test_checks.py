@@ -82,6 +82,18 @@ def test_sample_bound_and_one_check(monkeypatch):
     assert json.loads(messages[0].split(": ", 1)[1])["sample_bytes"] == 100
 
 
+def test_audio_probe_reads_one_bounded_input_sample(monkeypatch):
+    monkeypatch.setattr("checks.inspect_audio", lambda data: {"sample_bytes": len(data)}, raising=False)
+    messages = []
+    checks = LocalChecks(None, messages.append, window_seconds=999, max_bytes=100, live_audio=True)
+    checks.input_audio(b"x" * 200)
+    checks.input_audio(b"x" * 200)
+    checks.finish()
+    assert [line for line in messages if line.startswith("LIVE_AUDIO_CHECK:")] == [
+        'LIVE_AUDIO_CHECK: {"sample_bytes": 100}',
+    ]
+
+
 def test_decoded_frames_do_not_hide_invalid_timestamps(monkeypatch):
     info = {"streams": [{"codec_name": "h264"}], "packets": [
         {"dts": 1, "dts_time": "0", "flags": "K_"},

@@ -85,9 +85,38 @@ def inspect_ts(data):
     return report
 
 
+def inspect_audio(data):
+    """Summarize the first audio track in a private MPEG-PS input sample."""
+    result = subprocess.run([
+        "ffprobe", "-v", "error", "-f", "mpeg", "-i", "pipe:0", "-select_streams", "a:0",
+        "-show_streams", "-show_entries", "stream=codec_name,sample_rate,channels", "-of", "json",
+    ], input=data, capture_output=True, timeout=10)
+    if result.returncode:
+        return {"status": "probe_error"}
+    audio = next(iter(json.loads(result.stdout).get("streams", [])), None)
+    if audio is None:
+        return {"status": "not_detected"}
+    codec = audio.get("codec_name")
+    report = {
+        "status": "detected",
+        "codec": codec if codec in {"aac", "ac3", "mp2", "mp3", "opus", "pcm_alaw", "pcm_mulaw",
+                                    "pcm_s16be", "pcm_s16le"} else "other",
+    }
+    rate = audio.get("sample_rate")
+    if isinstance(rate, str) and rate.isascii() and rate.isdecimal() and len(rate) <= 6:
+        sample_rate = int(rate)
+        if 0 < sample_rate <= 384000:
+            report["sample_rate"] = sample_rate
+    channels = audio.get("channels")
+    if type(channels) is int and 0 < channels <= 32:
+        report["channels"] = channels
+    return report
+
+
 class LocalChecks:
     """Once per producer: bounded samples, no files or media uploaded/logged."""
-    def __init__(self, key, emit, window_seconds=5, max_bytes=2 * 1024 * 1024, pipeline_flags=None):
+    def __init__(self, key, emit, window_seconds=5, max_bytes=2 * 1024 * 1024, pipeline_flags=None,
+                 *, live_audio=False):
         self.key = key
         self.emit = emit
         self.window_seconds = window_seconds
@@ -96,6 +125,8 @@ class LocalChecks:
         self.raw = bytearray()
         self.clear = bytearray()
         self.ts = bytearray()
+        self.audio_input = bytearray() if live_audio else None
+        self.audio_started = None
         self.decrypt_started = None
         self.ts_started = None
         self.decrypt_done = False
@@ -154,6 +185,22 @@ class LocalChecks:
         if len(self.ts) >= self.max_bytes or time.monotonic() - self.ts_started >= self.window_seconds:
             self._check()
 
+    def input_audio(self, data):
+        if self.audio_input is None or not data:
+            return
+        now = time.monotonic()
+        self.audio_started = self.audio_started or now
+        remaining = self.max_bytes - len(self.audio_input)
+        self.audio_input.extend(data[:remaining])
+        if len(self.audio_input) >= self.max_bytes or now - self.audio_started >= self.window_seconds:
+            self._check_audio()
+
+    def _check_audio(self):
+        sample = self.audio_input
+        self.audio_input = None
+        if sample:
+            self._launch("LIVE_AUDIO_CHECK", lambda: inspect_audio(sample))
+
     def _check(self):
         if self.ts_done:
             return
@@ -171,6 +218,7 @@ class LocalChecks:
     def finish(self):
         self._compare()
         self._check()
+        self._check_audio()
         deadline = time.monotonic() + 12
         for thread in self.threads:
             thread.join(timeout=max(0, deadline - time.monotonic()))

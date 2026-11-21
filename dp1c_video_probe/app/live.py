@@ -80,7 +80,8 @@ def produce(options_path=Path("/data/options.json"), auth_path=Path("/data/live_
             remux_stream(stream, output if output is not None else sys.stdout.buffer,
                          key=auth["key"] if options.get("decrypt_video", False) else None, max_seconds=options.get("max_view_seconds", 300), emit=emit,
                          video_mode=options.get("video_mode", "compatible"),
-                         decrypt_mode=options.get("decrypt_mode", "auto"))
+                         decrypt_mode=options.get("decrypt_mode", "auto"),
+                         live_audio=options.get("live_audio", False) is True)
         return 0
     except Exception as error:
         emit(f"LIVE_FAIL: stage={stage} error_class={type(error).__name__}")
@@ -316,7 +317,7 @@ def validate_options(options):
 def run(options):
     os.umask(0o077)
     logging.disable(logging.CRITICAL)
-    print("LIVE: version=0.2.4", flush=True)
+    print("LIVE: version=0.2.5", flush=True)
     stage = "live_configuration"
     auth_path = Path("/data/live_auth.json")
     try:
